@@ -133,7 +133,7 @@ decompileframework() {
 
 applymod() {
 	echo -n "Applying MOD..."
-	cp -rf "$DIR_MOD/*" "$DIR_DECOMPILED"
+	cp -rf "$DIR_MOD"/* "$DIR_DECOMPILED"
 	echo "Done."
 }
 
@@ -157,7 +157,7 @@ copyunmodifiedfiles() {
 	cd "$DIR_UNPACKED"
 	cat "$FILESTOREMOVE" | xargs -n 1 rm -f >> "$LOGFILE"
 	rm -f resources.arsc
-	cp -vr "$DIR_UNPACKED/*" "$DIR_COMPILED" >> "$LOGFILE"
+	cp -vr "$DIR_UNPACKED"/* "$DIR_COMPILED" >> "$LOGFILE"
 	cd "$DIR"
 	echo "Done."
 }
