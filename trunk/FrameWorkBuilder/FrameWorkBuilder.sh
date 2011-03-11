@@ -16,6 +16,8 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # V0.1 Initial version
+# V0.1a BUGFIX cp dirs
+# V0.2 MOD Analysis, Compile fail detection
 # ------------------------------------------
 set +x # do not print executed commands and arguments (set -x will show all commands - useful for debugging)
 
