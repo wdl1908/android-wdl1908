@@ -68,7 +68,9 @@ cleanenv() {
 	if [ -d "$DIR_DECOMPILED" ] ; then                 rm -rf "$DIR_DECOMPILED"; mkdir -p "$DIR_DECOMPILED"; fi
 	if [ -f "$LOGFILE" ] ; then                        rm -f "$LOGFILE"; fi
 	if [ -f "$FILESTOREMOVE" ] ; then                  rm -f "$FILESTOREMOVE"; fi
+	#if [ -f "$DIR_WORKSPACE/"*-files.txt ] ; then      rm -f "$DIR_WORKSPACE/"*-files.txt; fi
 	if [ -f "$DIR_MODDED/framework-res.apk" ] ; then   rm -f "$DIR_MODDED/framework-res.apk"; fi
+	rm -f "$DIR_WORKSPACE/"*-files.txt
 	echo "Done."
 }
 
@@ -131,16 +133,62 @@ decompileframework() {
 	fi
 }
 
+printyesno() {
+	VAR=$1
+	NR=$2
+	WARNING=$3
+	if [ "$NR" = "0" ] ; then
+		echo "[NO]"
+		export $VAR=0
+	else
+		echo "[YES] ($NR) $WARNING"
+		export $VAR=1
+	fi
+}
+
+printtypes() {
+	VAR=$1
+	EXT=$2
+	WARNING=$3
+	echo -n "   MOD contains '$EXT' files: "
+	cat "$FILESTOREMOVE" | grep -E ".$EXT" | sed 's/\.\/.*\///g' | sed 's/\.'$EXT'//' > "$DIR_WORKSPACE/"$EXT-files.txt
+	NR=`cat "$DIR_WORKSPACE/"$EXT-files.txt | wc -l`
+	printyesno $VAR $NR "$WARNING"
+}
+
+analyzemod() {
+	echo "Analizing MOD..."
+	cd "$DIR_MOD"
+	find . -type f > "$FILESTOREMOVE"
+	printtypes "PNGEXIST" "png"
+	printtypes "XMLEXIST" "xml" "Need to recompile"
+	printtypes "PNG9EXIST" "9.png" "I hope you did your homework (See Patch9)"
+	grep -x -f "$DIR_WORKSPACE/xml-files.txt" "$DIR_WORKSPACE/png-files.txt" > "$DIR_WORKSPACE/xml-png-samename-files.txt"
+	echo -n "   MOD contains 'png', 'xml' files with same name: "
+	printyesno "PNGXMLEXIST" `cat "$DIR_WORKSPACE/xml-png-samename-files.txt" | wc -l` "BAD (some of the animations may not work)"
+	cd "$DIR"
+}
+
 applymod() {
 	echo -n "Applying MOD..."
 	cp -rf "$DIR_MOD"/* "$DIR_DECOMPILED"
 	echo "Done."
 }
 
+copymod() {
+	echo -n "Applying MOD..."
+	cp -rf "$DIR_MOD"/* "$DIR_COMPILED"
+	echo "Done."
+}
+
 compileframework() {
 	echo "Compiling framework-res.apk..."
 	java -jar "$DIR_tools/apktool.jar" b "$DIR_DECOMPILED" "$DIR_MODDED/framework-res-compiled.apk" >> "$LOGFILE"
-	echo "Done."
+	if [ ! -f "$DIR_MODDED/framework-res-compiled.apk" ] ; then
+		showerror "COMPILE FAILED: framework-res.apk not found in directory framework-res-MODDED"
+	else
+		echo "Done."
+	fi
 }
 
 unpackcompiled() {
@@ -168,7 +216,13 @@ repackagecompiled() {
 	7za a -tzip "$DIR_MODDED/framework-res.apk" * -mx9 >> "$LOGFILE"
 	7za d -tzip "$DIR_MODDED/framework-res.apk" resources.arsc >> "$LOGFILE"
 	7za u -tzip "$DIR_MODDED/framework-res.apk" resources.arsc -mx0 >> "$LOGFILE"
-	cd "$DIR_COMPILED"
+	cd "$DIR"
+	echo "Done."
+}
+
+copyframework() {
+	echo -n "Copy UNPACKED to COMPILED..."
+	cp -rf "$DIR_UNPACKED"/* "$DIR_COMPILED"
 	echo "Done."
 }
 
@@ -176,11 +230,23 @@ checkenv
 checkprograms
 checktools
 cleanenv
-unpackframework
-decompileframework
-applymod
-compileframework
-unpackcompiled
-copyunmodifiedfiles
-repackagecompiled
+analyzemod
+if [[ "$PNGEXIST" = "0" && "$XMLEXIST" = "0" ]] ; then
+	showerror "FAILED: MOD is empty"
+	exit
+fi
+if [ "$XMLEXIST" = "1" ] ; then
+	unpackframework
+	decompileframework
+	applymod
+	compileframework
+	unpackcompiled
+	copyunmodifiedfiles
+	repackagecompiled
+else
+	unpackframework
+	copyframework
+	copymod
+	repackagecompiled
+fi
 exit
