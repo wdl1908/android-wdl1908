@@ -39,7 +39,7 @@ DIR_COMPILED="$DIR/WorkSpace/framework-res-COMPILED"
 DIR_DECOMPILED="$DIR/WorkSpace/framework-res-DECOMPILED"
 LOGFILE="$DIR_WORKSPACE/log.txt"
 FILESTOREMOVE="$DIR_WORKSPACE/files-to-remove.txt"
-
+FILESINCOMPILED="$DIR_WORKSPACE/files-in-compiled.txt"
 export PATH="$DIR_tools":$PATH
 
 showerror() {
@@ -70,6 +70,7 @@ cleanenv() {
 	if [ -d "$DIR_DECOMPILED" ] ; then                 rm -rf "$DIR_DECOMPILED"; mkdir -p "$DIR_DECOMPILED"; fi
 	if [ -f "$LOGFILE" ] ; then                        rm -f "$LOGFILE"; fi
 	if [ -f "$FILESTOREMOVE" ] ; then                  rm -f "$FILESTOREMOVE"; fi
+	if [ -f "$FILESINCOMPILED" ] ; then                rm -f "$FILESINCOMPILED"; fi
 	#if [ -f "$DIR_WORKSPACE/"*-files.txt ] ; then      rm -f "$DIR_WORKSPACE/"*-files.txt; fi
 	if [ -f "$DIR_MODDED/framework-res.apk" ] ; then   rm -f "$DIR_MODDED/framework-res.apk"; fi
 	rm -f "$DIR_WORKSPACE/"*-files.txt
@@ -149,12 +150,13 @@ printyesno() {
 }
 
 printtypes() {
-	VAR=$1
-	EXT=$2
-	WARNING=$3
+	FILE=$1
+	VAR=$2
+	EXT=$3
+	WARNING=$4
 	echo -n "   MOD contains '$EXT' files: "
-	cat "$FILESTOREMOVE" | grep -E ".$EXT" | sed 's/\.\/.*\///g' | sed 's/\.'$EXT'//' > "$DIR_WORKSPACE/"$EXT-files.txt
-	NR=`cat "$DIR_WORKSPACE/"$EXT-files.txt | wc -l`
+	cat "$FILE" | grep -E ".$EXT" | sed 's/\.\/.*\///g' | sed 's/\.'$EXT'//' > "$DIR_WORKSPACE/"$VAR-$EXT-files.txt
+	NR=`cat "$DIR_WORKSPACE/"$VAR-$EXT-files.txt | wc -l`
 	printyesno $VAR $NR "$WARNING"
 }
 
@@ -162,12 +164,31 @@ analyzemod() {
 	echo "Analizing MOD..."
 	cd "$DIR_MOD"
 	find . -type f > "$FILESTOREMOVE"
-	printtypes "PNGEXIST" "png"
-	printtypes "XMLEXIST" "xml" "Need to recompile"
-	printtypes "PNG9EXIST" "9.png" "I hope you did your homework (See Patch9)"
-	grep -x -f "$DIR_WORKSPACE/xml-files.txt" "$DIR_WORKSPACE/png-files.txt" > "$DIR_WORKSPACE/xml-png-samename-files.txt"
+	printtypes "$FILESTOREMOVE" "PNGEXIST" "png"
+	printtypes "$FILESTOREMOVE" "XMLEXIST" "xml" "Need to recompile"
+	printtypes "$FILESTOREMOVE" "PNG9EXIST" "9.png" "I hope you did your homework (See Patch9)"
+	grep -x -f "$DIR_WORKSPACE/XMLEXIST-xml-files.txt" "$DIR_WORKSPACE/PNGEXIST-png-files.txt" > "$DIR_WORKSPACE/xml-png-samename-files.txt"
 	echo -n "   MOD contains 'png', 'xml' files with same name: "
 	printyesno "PNGXMLEXIST" `cat "$DIR_WORKSPACE/xml-png-samename-files.txt" | wc -l` "BAD (some of the animations may not work)"
+	cd "$DIR"
+}
+
+analyzedecompiled() {
+	echo "Analizing COMPILED..."
+	cd "$DIR_DECOMPILED"
+	find ./res/drawable* -type f > "$FILESINCOMPILED"
+	printtypes "$FILESINCOMPILED" "PNGCOMPILEDEXIST" "png"
+	printtypes "$FILESINCOMPILED" "XMLCOMPILEDEXIST" "xml"
+	grep -x -f "$DIR_WORKSPACE/XMLCOMPILEDEXIST-xml-files.txt" "$DIR_WORKSPACE/PNGCOMPILEDEXIST-png-files.txt" > "$DIR_WORKSPACE/DECOMPILED-xml-png-samename-files.txt"
+	echo -n "   MOD contains 'png', 'xml' files with same name: "
+	printyesno "PNGXMLCOMPILEDEXIST" `cat "$DIR_WORKSPACE/DECOMPILED-xml-png-samename-files.txt" | wc -l` "BAD (some of the animations may not work)"
+	if [ $PNGXMLCOMPILEDEXIST = "1" ] ; then
+		echo -n "Found duplicate xml png files trying to fix..."
+		grep -E ".png" "$FILESINCOMPILED" | grep -w -f "$DIR_WORKSPACE/DECOMPILED-xml-png-samename-files.txt" > "$DIR_WORKSPACE/duplicate-png-files.txt"
+		cat "$DIR_WORKSPACE/duplicate-png-files.txt" | xargs -n 1 rm -f >> "$LOGFILE"
+		NR=`cat "$DIR_WORKSPACE/duplicate-png-files.txt" | wc -l`
+		echo "Removed ($NR) Done."
+	fi
 	cd "$DIR"
 }
 
@@ -208,6 +229,8 @@ copyunmodifiedfiles() {
 	cat "$FILESTOREMOVE" | xargs -n 1 rm -f >> "$LOGFILE"
 	rm -f resources.arsc
 	cp -vr "$DIR_UNPACKED"/* "$DIR_COMPILED" >> "$LOGFILE"
+	cd "$DIR_COMPILED"
+	cat "$DIR_WORKSPACE/duplicate-png-files.txt" | xargs -n 1 rm -f >> "$LOGFILE"
 	cd "$DIR"
 	echo "Done."
 }
@@ -241,6 +264,7 @@ if [ "$XMLEXIST" = "1" ] ; then
 	unpackframework
 	decompileframework
 	applymod
+	analyzedecompiled
 	compileframework
 	unpackcompiled
 	copyunmodifiedfiles
