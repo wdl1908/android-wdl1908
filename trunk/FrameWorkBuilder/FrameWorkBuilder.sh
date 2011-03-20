@@ -65,14 +65,13 @@ checkenv() {
 cleanenv() {
 	echo -n "Clearing environment..."
 	# Better safe than sorry test if dir exists before removing.
-	if [ -d "$DIR_UNPACKED" ] ; then                   rm -rf "$DIR_UNPACKED";   mkdir -p "$DIR_UNPACKED"; fi
-	if [ -d "$DIR_COMPILED" ] ; then                   rm -rf "$DIR_COMPILED";   mkdir -p "$DIR_COMPILED"; fi
-	if [ -d "$DIR_DECOMPILED" ] ; then                 rm -rf "$DIR_DECOMPILED"; mkdir -p "$DIR_DECOMPILED"; fi
-	if [ -f "$LOGFILE" ] ; then                        rm -f "$LOGFILE"; fi
-	if [ -f "$FILESTOREMOVE" ] ; then                  rm -f "$FILESTOREMOVE"; fi
-	if [ -f "$FILESINCOMPILED" ] ; then                rm -f "$FILESINCOMPILED"; fi
-	#if [ -f "$DIR_WORKSPACE/"*-files.txt ] ; then      rm -f "$DIR_WORKSPACE/"*-files.txt; fi
-	if [ -f "$DIR_MODDED/framework-res.apk" ] ; then   rm -f "$DIR_MODDED/framework-res.apk"; fi
+	if [ -d "$DIR_UNPACKED" ] ; then      rm -rf "$DIR_UNPACKED";   mkdir -p "$DIR_UNPACKED"; fi
+	if [ -d "$DIR_COMPILED" ] ; then      rm -rf "$DIR_COMPILED";   mkdir -p "$DIR_COMPILED"; fi
+	if [ -d "$DIR_DECOMPILED" ] ; then    rm -rf "$DIR_DECOMPILED"; mkdir -p "$DIR_DECOMPILED"; fi
+	if [ -f "$LOGFILE" ] ; then           rm -f "$LOGFILE"; fi
+	if [ -f "$FILESTOREMOVE" ] ; then     rm -f "$FILESTOREMOVE"; fi
+	if [ -f "$FILESINCOMPILED" ] ; then   rm -f "$FILESINCOMPILED"; fi
+	rm -f "$DIR_MODDED/framework-res.apk"
 	rm -f "$DIR_WORKSPACE/"*-files.txt
 	echo "Done."
 }
@@ -155,7 +154,7 @@ printtypes() {
 	EXT=$3
 	WARNING=$4
 	echo -n "   MOD contains '$EXT' files: "
-	cat "$FILE" | grep -E ".$EXT" | sed 's/\.\/.*\///g' | sed 's/\.'$EXT'//' > "$DIR_WORKSPACE/"$VAR-$EXT-files.txt
+	cat "$FILE" | grep -E "\.$EXT" | sed 's/\.\/.*\///g' | sed 's/\.'$EXT'//' > "$DIR_WORKSPACE/"$VAR-$EXT-files.txt
 	NR=`cat "$DIR_WORKSPACE/"$VAR-$EXT-files.txt | wc -l`
 	printyesno $VAR $NR "$WARNING"
 }
@@ -206,7 +205,7 @@ copymod() {
 
 compileframework() {
 	echo "Compiling framework-res.apk..."
-	java -jar "$DIR_tools/apktool.jar" b "$DIR_DECOMPILED" "$DIR_MODDED/framework-res-compiled.apk" >> "$LOGFILE"
+	java -jar "$DIR_tools/apktool.jar" b "$DIR_DECOMPILED" "$DIR_MODDED/framework-res-compiled.apk" >> "$LOGFILE" 2>&1
 	if [ ! -f "$DIR_MODDED/framework-res-compiled.apk" ] ; then
 		showerror "COMPILE FAILED: framework-res.apk not found in directory framework-res-MODDED"
 	else
@@ -260,7 +259,7 @@ if [[ "$PNGEXIST" = "0" && "$XMLEXIST" = "0" ]] ; then
 	showerror "FAILED: MOD is empty"
 	exit
 fi
-if [ "$XMLEXIST" = "1" ] ; then
+if [[ "$XMLEXIST" = "1" || "$PNG9EXIST" = "1" ]] ; then
 	unpackframework
 	decompileframework
 	applymod

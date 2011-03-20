@@ -43,5 +43,15 @@ cleanenv() {
 	echo "Done."
 }
 
+makebasedirs() {
+	echo -n "Making base drawable dirs..."
+	mkdir -p "$DIR_MOD"/res/drawable
+	mkdir -p "$DIR_MOD"/res/drawable-hdpi
+	mkdir -p "$DIR_MOD"/res/drawable-mdpi
+	echo "Done."
+}
+
 checkenv
 cleanenv
+makebasedirs
+
