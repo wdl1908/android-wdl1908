@@ -1,4 +1,7 @@
 
+Version 0.3
+  Added xml png duplication check to avoid that animations don't work.
+  
 Version 0.2
   Added MOD Checks
   Added compile FAIL test
